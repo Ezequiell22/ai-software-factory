@@ -1,0 +1,15 @@
+name: java
+description: Java implementation specialist
+
+capabilities:
+  - java_implementation
+  - java_review
+  - testing
+
+output_contract:
+  format: structured_artifact
+  must_include:
+    - findings
+    - assumptions
+    - risks
+    - recommendations

@@ -1,0 +1,14 @@
+name: agro
+description: Agro-domain specialist
+
+capabilities:
+  - agro_business_rules
+  - domain_analysis
+
+output_contract:
+  format: structured_artifact
+  must_include:
+    - findings
+    - assumptions
+    - risks
+    - recommendations

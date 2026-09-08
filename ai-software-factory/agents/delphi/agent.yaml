@@ -1,0 +1,14 @@
+name: delphi
+description: Delphi implementation specialist
+
+capabilities:
+  - delphi_implementation
+  - legacy_analysis
+
+output_contract:
+  format: structured_artifact
+  must_include:
+    - findings
+    - assumptions
+    - risks
+    - recommendations

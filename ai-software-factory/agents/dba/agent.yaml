@@ -1,0 +1,15 @@
+name: dba
+description: Database specialist
+
+capabilities:
+  - schema_design
+  - migration_design
+  - query_analysis
+
+output_contract:
+  format: structured_artifact
+  must_include:
+    - findings
+    - assumptions
+    - risks
+    - recommendations

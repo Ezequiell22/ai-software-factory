@@ -1,0 +1,11 @@
+version: 2
+
+defaults:
+  workspace_strategy: worktree
+  require_plan_before_code: true
+  require_validation_before_pr: true
+
+paths:
+  agents: ./agents
+  workflows: ./workflows
+  plugins: ./plugins

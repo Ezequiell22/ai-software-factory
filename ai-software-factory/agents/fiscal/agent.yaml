@@ -1,0 +1,14 @@
+name: fiscal
+description: Brazilian fiscal-domain specialist
+
+capabilities:
+  - fiscal_rules
+  - tax_analysis
+
+output_contract:
+  format: structured_artifact
+  must_include:
+    - findings
+    - assumptions
+    - risks
+    - recommendations

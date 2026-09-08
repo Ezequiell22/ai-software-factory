@@ -1,0 +1,10 @@
+type: ImplementationPlan
+required:
+  - objective
+  - assumptions
+  - affected_components
+  - specialist_inputs
+  - implementation_steps
+  - tests
+  - risks
+  - acceptance_criteria

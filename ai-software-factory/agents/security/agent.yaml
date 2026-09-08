@@ -1,0 +1,14 @@
+name: security
+description: Security specialist
+
+capabilities:
+  - security_review
+  - threat_analysis
+
+output_contract:
+  format: structured_artifact
+  must_include:
+    - findings
+    - assumptions
+    - risks
+    - recommendations

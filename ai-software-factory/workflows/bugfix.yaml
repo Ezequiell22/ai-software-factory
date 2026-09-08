@@ -1,0 +1,9 @@
+name: bugfix
+stages:
+  - discovery
+  - reproduce
+  - root_cause
+  - implementation
+  - regression_tests
+  - validation
+  - git_pr

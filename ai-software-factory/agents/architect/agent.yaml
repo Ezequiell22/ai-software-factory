@@ -1,0 +1,15 @@
+name: architect
+description: Architecture specialist
+
+capabilities:
+  - architecture_analysis
+  - impact_analysis
+  - design
+
+output_contract:
+  format: structured_artifact
+  must_include:
+    - findings
+    - assumptions
+    - risks
+    - recommendations

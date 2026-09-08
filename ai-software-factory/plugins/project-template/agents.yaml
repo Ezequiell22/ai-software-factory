@@ -1,0 +1,19 @@
+enabled:
+  - architect
+  - java
+  - qa
+  - dba
+  - fiscal
+  - security
+
+routing:
+  java_implementation:
+    - java
+  schema_change:
+    - dba
+  architecture_change:
+    - architect
+  tax_or_fiscal_change:
+    - fiscal
+  security_sensitive_change:
+    - security

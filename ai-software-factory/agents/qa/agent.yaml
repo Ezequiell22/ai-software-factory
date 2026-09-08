@@ -1,0 +1,15 @@
+name: qa
+description: Quality specialist
+
+capabilities:
+  - test_strategy
+  - test_design
+  - quality_review
+
+output_contract:
+  format: structured_artifact
+  must_include:
+    - findings
+    - assumptions
+    - risks
+    - recommendations

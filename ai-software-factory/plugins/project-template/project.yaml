@@ -1,0 +1,40 @@
+name: example-java-project
+version: 1
+
+languages:
+  - java
+  - sql
+
+build:
+  tool: maven
+  command: mvn verify
+
+architecture:
+  style: layered
+  documentation_source: technical-documentation-mcp
+
+agents:
+  required:
+    - architect
+    - java
+    - qa
+  conditional:
+    - dba
+    - fiscal
+    - security
+
+mcps:
+  - technical-documentation
+  - business-rules
+  - database
+
+quality:
+  tests_required: true
+  build_required: true
+  architecture_review_required: true
+  security_review_for_sensitive_changes: true
+
+git:
+  strategy: worktree
+  branch_pattern: "feature/{jira_key}"
+  require_pr: true

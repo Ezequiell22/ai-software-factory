@@ -1,0 +1,22 @@
+name: feature
+stages:
+  - discovery
+  - context
+  - specialist_planning
+  - consolidation
+  - implementation
+  - tests
+  - validation
+  - review
+  - git_pr
+
+parallel:
+  specialist_planning:
+    - architect
+    - fiscal
+    - dba
+    - domain_specialist
+
+gates:
+  - plan_approved_before_implementation
+  - validation_passed_before_pr

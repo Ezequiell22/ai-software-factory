@@ -1,0 +1,9 @@
+type: SpecialistArtifact
+required:
+  - specialist
+  - capability
+  - findings
+  - assumptions
+  - risks
+  - recommendations
+  - evidence
