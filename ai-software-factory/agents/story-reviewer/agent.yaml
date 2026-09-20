@@ -1,0 +1,5 @@
+name: story_reviewer
+description: Final quality gate for development-ready stories.
+capabilities: [story_quality_gate, completeness_review]
+prompt_file: instructions.md
+can_delegate_to: [pm, po, refinement]

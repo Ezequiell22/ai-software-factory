@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     work_start_hour: int = 7
     work_end_hour: int = 19
     reconciliation_seconds: int = 60
+    max_refinement_cycles: int = 3
     jira_base_url: str = ""
     jira_email: str = ""
     jira_api_token: str = ""
@@ -13,6 +14,7 @@ class Settings(BaseSettings):
     jira_idea_jql: str = ""
     jira_story_issue_type: str = "Story"
     jira_ux_issue_type: str = "Sub-task"
+    jira_issue_link_type: str = "Relates"
     jira_webhook_secret: str = ""
     openai_api_key: str = ""
     openai_model: str = "gpt-5.6"
