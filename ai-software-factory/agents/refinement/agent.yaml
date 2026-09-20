@@ -1,0 +1,5 @@
+name: refinement
+description: Adversarial gap analyzer for stories.
+capabilities: [ambiguity_detection, gap_analysis, completeness_gate]
+prompt_file: instructions.md
+can_delegate_to: [pm, po, ux_ui, agrotis, sap_b1, accounting]

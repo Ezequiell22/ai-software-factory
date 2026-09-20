@@ -1,0 +1,8 @@
+name: product_story
+max_refinement_cycles: 3
+stages: [intake, pm_analysis, po_draft, refinement, specialist_resolution, synthesis, story_quality_gate, create_story, create_ux_subtask, ux_refinement, prototype, ready_for_development]
+gates:
+  story_complete:
+    require: [actor_defined, permissions_defined, happy_path_defined, error_paths_defined, business_rules_closed, dependencies_known, integrations_known, fiscal_questions_closed, sap_questions_closed, agrotis_questions_closed, ux_impact_defined]
+  prototype_contract:
+    files_exactly: [index.html, components.js]

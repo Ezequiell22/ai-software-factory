@@ -1,0 +1,28 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ai_factory}
+      POSTGRES_USER: ${POSTGRES_USER:-ai_factory}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ai_factory}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U ${POSTGRES_USER:-ai_factory} -d ${POSTGRES_DB:-ai_factory}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  app:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-ai_factory}:${POSTGRES_PASSWORD:-ai_factory}@db:5432/${POSTGRES_DB:-ai_factory}
+    ports: ["8080:8080"]
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./artifacts:/app/artifacts
+volumes:
+  postgres_data:
