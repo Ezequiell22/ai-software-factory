@@ -42,16 +42,25 @@ class JiraClient:
     def comments(self,key):
         data=self._request("GET",f"/rest/api/3/issue/{key}/comment",params={"maxResults":100,"orderBy":"created"})
         return data.get("comments",[])
+    @staticmethod
+    def _timestamp(value):
+        if isinstance(value, datetime):
+            return value
+        if not value:
+            return None
+        return datetime.fromisoformat(str(value).replace("Z","+00:00"))
+
     def latest_human_comment_after(self,key,created_after):
-        cutoff=created_after if isinstance(created_after,str) else created_after.isoformat()
+        cutoff=self._timestamp(created_after)
         candidates=[]
         for c in self.comments(key):
             body=adf_text(c.get("body")).strip()
-            created=c.get("created","")
-            if not body or created <= cutoff: continue
+            created_raw=c.get("created","")
+            created=self._timestamp(created_raw)
+            if not body or not created or (cutoff and created <= cutoff): continue
             if body.startswith("AI Agent Activity") or body.startswith("[AI QUESTION"):
                 continue
-            candidates.append({"id":str(c.get("id")),"created":created,"body":body})
+            candidates.append({"id":str(c.get("id")),"created":created_raw,"body":body})
         return candidates[0] if candidates else None
     def add_comment(self,key,text):
         return self._request("POST",f"/rest/api/3/issue/{key}/comment",json={"body":adf_document(text)})
