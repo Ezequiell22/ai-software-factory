@@ -1,5 +1,0 @@
-name: ux_ui
-description: UX/UI specialist that turns an approved story into an executable prototype.
-capabilities: [user_flow, ui_states, html_prototype]
-prompt_file: instructions.md
-can_delegate_to: [pm, po, agrotis, sap_b1, accounting]

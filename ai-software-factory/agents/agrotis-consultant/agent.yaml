@@ -1,5 +1,0 @@
-name: agrotis
-description: Agrotis product consultant backed by approved internal documentation.
-capabilities: [agrotis_products, agrotis_business_rules]
-prompt_file: instructions.md
-can_delegate_to: [pm, po, sap_b1, accounting]

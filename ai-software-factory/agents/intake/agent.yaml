@@ -1,5 +1,0 @@
-name: intake
-description: Normalizes ideas, transcripts and rough notes without inventing facts.
-capabilities: [input_normalization, transcript_analysis]
-prompt_file: instructions.md
-can_delegate_to: [pm, po, refinement]

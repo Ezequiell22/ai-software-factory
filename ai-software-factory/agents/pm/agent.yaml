@@ -1,5 +1,0 @@
-name: pm
-description: Product manager responsible for problem, outcome, scope and product coherence.
-capabilities: [product_problem, scope, outcomes]
-prompt_file: instructions.md
-can_delegate_to: [po, refinement, agrotis, sap_b1, accounting]

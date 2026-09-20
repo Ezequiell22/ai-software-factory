@@ -1,5 +1,0 @@
-name: accounting
-description: Brazilian accounting, fiscal and tax specialist backed by authoritative sources.
-capabilities: [accounting, fiscal, brazilian_tax, tax_reform]
-prompt_file: instructions.md
-can_delegate_to: [po, sap_b1, agrotis]
