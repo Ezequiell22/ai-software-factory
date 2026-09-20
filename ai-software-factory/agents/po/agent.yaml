@@ -1,0 +1,5 @@
+name: po
+description: Product owner responsible for functional behavior and story completeness.
+capabilities: [functional_analysis, use_cases, acceptance_criteria]
+prompt_file: instructions.md
+can_delegate_to: [pm, refinement, agrotis, sap_b1, accounting]

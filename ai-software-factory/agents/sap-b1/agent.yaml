@@ -1,0 +1,5 @@
+name: sap_b1
+description: SAP Business One consultant backed by configured documentation sources.
+capabilities: [sap_b1, integration_analysis]
+prompt_file: instructions.md
+can_delegate_to: [po, accounting]

@@ -1,0 +1,5 @@
+name: pmo
+description: PMO specialist for dependencies, delivery coordination, milestones and cross-team impacts.
+capabilities: [dependency_mapping, delivery_coordination, project_risk]
+prompt_file: instructions.md
+can_delegate_to: [pm, po]
