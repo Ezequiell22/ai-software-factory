@@ -1,4 +1,5 @@
 import hashlib, io, json, mimetypes, httpx
+from datetime import datetime
 from pathlib import Path
 from pypdf import PdfReader
 from docx import Document
@@ -34,8 +35,36 @@ class JiraClient:
         if not settings.jira_idea_jql: return []
         d=self._request("POST","/rest/api/3/search/jql",json={"jql":settings.jira_idea_jql,"maxResults":50,"fields":["summary","description","updated","status","issuetype","attachment"]})
         return d.get("issues",[])
+    def get_issue(self,key):
+        return self._request("GET",f"/rest/api/3/issue/{key}",params={"fields":"summary,description,updated,status,issuetype,attachment"})
+    def current_status(self,key):
+        return self.get_issue(key).get("fields",{}).get("status",{}).get("name","")
+    def comments(self,key):
+        data=self._request("GET",f"/rest/api/3/issue/{key}/comment",params={"maxResults":100,"orderBy":"created"})
+        return data.get("comments",[])
+    def latest_human_comment_after(self,key,created_after):
+        cutoff=created_after if isinstance(created_after,str) else created_after.isoformat()
+        candidates=[]
+        for c in self.comments(key):
+            body=adf_text(c.get("body")).strip()
+            created=c.get("created","")
+            if not body or created <= cutoff: continue
+            if body.startswith("AI Agent Activity") or body.startswith("[AI QUESTION"):
+                continue
+            candidates.append({"id":str(c.get("id")),"created":created,"body":body})
+        return candidates[0] if candidates else None
     def add_comment(self,key,text):
         return self._request("POST",f"/rest/api/3/issue/{key}/comment",json={"body":adf_document(text)})
+    def transition_to(self,key,status_name):
+        issue=self.get_issue(key)
+        current=issue.get("fields",{}).get("status",{}).get("name")
+        if current == status_name: return True
+        data=self._request("GET",f"/rest/api/3/issue/{key}/transitions")
+        for transition in data.get("transitions",[]):
+            if transition.get("to",{}).get("name","").casefold()==status_name.casefold():
+                self._request("POST",f"/rest/api/3/issue/{key}/transitions",json={"transition":{"id":transition["id"]}})
+                return True
+        raise RuntimeError(f"No Jira transition from {current!r} to {status_name!r} for {key}")
     def create_story(self,summary,description):
         data={"fields":{"project":{"key":settings.jira_project_key},"summary":summary,"description":adf_document(description),"issuetype":{"name":settings.jira_story_issue_type}}}
         return self._request("POST","/rest/api/3/issue",json=data)
@@ -58,33 +87,28 @@ class JiraClient:
         if not url: return ""
         with httpx.Client(auth=self.auth,timeout=60,follow_redirects=True) as c:
             r=c.get(url); r.raise_for_status(); data=r.content
-        mime=(attachment.get("mimeType") or "").lower()
-        name=(attachment.get("filename") or "").lower()
+        mime=(attachment.get("mimeType") or "").lower(); name=(attachment.get("filename") or "").lower()
         try:
             if mime.startswith("text/") or name.endswith((".md",".txt",".csv",".json",".log")):
-                text=data.decode("utf-8",errors="replace")
+                value=data.decode("utf-8",errors="replace")
             elif mime=="application/pdf" or name.endswith(".pdf"):
-                reader=PdfReader(io.BytesIO(data)); text="\n".join((p.extract_text() or "") for p in reader.pages)
+                reader=PdfReader(io.BytesIO(data)); value="\n".join((p.extract_text() or "") for p in reader.pages)
             elif name.endswith(".docx") or "wordprocessingml" in mime:
-                doc=Document(io.BytesIO(data)); text="\n".join(p.text for p in doc.paragraphs)
-            else:
-                return "[ATTACHMENT_UNSUPPORTED_FOR_TEXT_EXTRACTION]"
-            return text[:settings.max_attachment_chars]
+                doc=Document(io.BytesIO(data)); value="\n".join(p.text for p in doc.paragraphs)
+            else: return "[ATTACHMENT_UNSUPPORTED_FOR_TEXT_EXTRACTION]"
+            return value[:settings.max_attachment_chars]
         except Exception as exc:
             return f"[ATTACHMENT_EXTRACTION_FAILED: {type(exc).__name__}]"
     def source_context(self,issue):
-        source=self.normalized_source(issue)
-        enriched=[]
+        source=self.normalized_source(issue); enriched=[]
         for a in issue.get("fields",{}).get("attachment",[]):
             enriched.append({**{k:a.get(k) for k in ("id","filename","mimeType","size","content")},"text":self.attachment_text(a)})
-        source["attachments"]=enriched
-        return source
+        source["attachments"]=enriched; return source
     @staticmethod
     def normalized_source(issue):
         f=issue.get("fields",{})
         return {"key":issue.get("key"),"summary":f.get("summary",""),"description":adf_text(f.get("description")).strip(),"updated":f.get("updated"),"attachments":[{"id":a.get("id"),"filename":a.get("filename"),"mimeType":a.get("mimeType"),"size":a.get("size"),"content":a.get("content")} for a in f.get("attachment",[])]}
     @staticmethod
     def revision(issue):
-        source=JiraClient.normalized_source(issue)
-        raw=json.dumps(source,sort_keys=True,default=str)
+        source=JiraClient.normalized_source(issue); raw=json.dumps(source,sort_keys=True,default=str)
         return hashlib.sha256(raw.encode()).hexdigest()

@@ -1,30 +1,37 @@
 # Product Agent Runtime
 
 ## Runtime
-The application stays online continuously. New Jira work is started only between 07:00 and 19:00 in `America/Sao_Paulo`. Work already in progress is allowed to finish.
+The application stays online continuously. New Jira work starts only between 07:00 and 19:00 in `America/Sao_Paulo`. Work already running may finish.
+
+## Board contract
+Default AIPTO status mapping:
+- Idea: intake queue
+- Discovery: agent lane
+- Human Approval: waiting for a human answer
+- Specification: refined Story
+- UX/UI: UX agent working
+- Engineering Ready: Story complete
+- Done: completed UX subtask
+
+All names are configurable through environment variables.
+
+## WAITING_HUMAN
+When a blocking ambiguity cannot be answered reliably:
+1. The workflow state and open question are persisted in Postgres.
+2. The agent adds a Jira comment beginning with `[AI QUESTION <id>]`.
+3. The card is moved to `Human Approval`.
+4. A human answers in a normal new Jira comment.
+5. The human moves the same card back to `Discovery` (the agent lane).
+6. The listener sees the card back in the agent lane, ignores AI-generated comments, captures the first human comment after the question, stores it as an Answer, resolves the Question and resumes the persisted workflow from the correct phase.
+7. UX questions use the same mechanism on the UX subtask itself.
+
+This avoids terminal/admin UI interaction for the product team.
 
 ## Flow
-1. Jira Idea/input is discovered by webhook or reconciliation.
-2. A unique workflow/trace is persisted in Postgres.
-3. Intake, PM and PO build the first Story draft.
-4. Refinement challenges the draft for ambiguities and missing rules.
-5. Questions are routed to configured agents.
-6. SAP B1, Agrotis and accounting/tax questions are never answered without an approved knowledge source; the workflow moves to `WAITING_HUMAN` instead.
-7. The Story is created only after the completeness gate passes.
-8. The Story is linked to the source Idea.
-9. A UX/UI subtask is created under the Story.
-10. UX/UI generates exactly `index.html` and `components.js`, stored under `artifacts/<trace>/<ux-issue>/`, registered in Postgres and attached to the UX card.
-11. Functional agent activity is posted to the Jira card. Technical logs remain in application logs.
+Idea -> Discovery -> refinement -> Human Approval (when necessary) -> Discovery -> Story/Specification -> UX/UI -> Engineering Ready.
 
-## Jira as operational interface
-Every meaningful activity is visible on the card: workflow id, agent, action, result and evidence summary. Chain-of-thought is never logged.
+## Traceability
+Every meaningful agent action remains visible in Jira. Technical logs stay in application logs. Chain-of-thought is never stored.
 
-## Adding an agent
-Create:
-- `agents/<agent>/agent.yaml`
-- `agents/<agent>/instructions.md`
-
-The registry discovers the agent at startup. No core change is required unless the agent needs a new external tool/knowledge adapter.
-
-## Knowledge adapters
-The current MVP deliberately blocks SAP/Agrotis/accounting answers until evidence sources are configured. Add retrieval adapters before enabling autonomous answers for these domains.
+## Knowledge safety
+SAP B1, Agrotis and accounting/tax agents remain evidence-gated. Without an approved knowledge adapter, blocking domain questions go to the human flow instead of being guessed.
