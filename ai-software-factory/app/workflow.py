@@ -36,9 +36,9 @@ class ProductWorkflow:
         wf=self.repo.create_or_get(proposed,key,revision); trace=wf["trace_id"]
         if wf["status"] in {"PROCESSING","COMPLETED","WAITING_HUMAN"}: return wf["status"]
         self.repo.update_status(wf["id"],"PROCESSING")
-        source=self.jira.normalized_source(issue)
+        source=self.jira.source_context(issue)
         self.repo.record_execution(wf["id"],"intake","COMPLETED",key,"Started product refinement")
-        self.worklog.activity(key,trace,"intake","Captured Jira input","Started product refinement.")
+        self.worklog.activity(key,trace,"intake","Captured Jira input",f"Started product refinement with {len(source.get('attachments',[]))} attachment(s).")
 
         try:
             result=self.story_engine.initial_draft(source)

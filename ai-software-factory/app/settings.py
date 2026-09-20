@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     work_end_hour: int = 19
     reconciliation_seconds: int = 60
     max_refinement_cycles: int = 3
+    max_attachment_mb: int = 15
+    max_attachment_chars: int = 120000
     jira_base_url: str = ""
     jira_email: str = ""
     jira_api_token: str = ""
