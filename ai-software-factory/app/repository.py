@@ -17,6 +17,10 @@ class WorkflowRepository:
         with SessionLocal.begin() as db:
             return str(db.execute(text("""INSERT INTO questions(workflow_id,issue_key,asked_by,requested_agent,question,blocking)
             VALUES (:workflow_id,:issue_key,:asked_by,:requested_agent,:question,:blocking) RETURNING id"""),locals()).scalar_one())
+    def add_artifact(self,workflow_id,issue_key,kind,path,checksum):
+        with SessionLocal.begin() as db:
+            db.execute(text("""INSERT INTO artifacts(workflow_id,issue_key,kind,path,checksum)
+            VALUES (:workflow_id,:issue_key,:kind,:path,:checksum)"""),locals())
     def update_status(self,workflow_id,status):
         with SessionLocal.begin() as db:
             db.execute(text("UPDATE workflows SET status=:status,updated_at=now() WHERE id=:workflow_id"),locals())

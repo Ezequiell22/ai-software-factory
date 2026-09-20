@@ -1,10 +1,12 @@
 import uuid
 from .agents import AgentRegistry
+from .artifacts import ArtifactManager
 from .jira import JiraClient
 from .repository import WorkflowRepository
 from .schedule import inside_work_window
 from .settings import settings
 from .story_engine import StoryEngine
+from .ux_engine import UXEngine
 from .worklog import JiraWorklogService
 
 KNOWLEDGE_AGENTS={"sap_b1","agrotis","accounting"}
@@ -13,6 +15,19 @@ class ProductWorkflow:
     def __init__(self):
         self.jira=JiraClient(); self.repo=WorkflowRepository(); self.registry=AgentRegistry(); self.registry.load()
         self.worklog=JiraWorklogService(self.jira); self.story_engine=StoryEngine(self.registry)
+        self.ux_engine=UXEngine(self.registry); self.artifacts=ArtifactManager()
+
+    def _answer_question(self, source, story, q):
+        if q.requested_agent in KNOWLEDGE_AGENTS:
+            return {"question":q.question,"agent":q.requested_agent,"answer":"KNOWLEDGE_UNAVAILABLE","evidence":[]}
+        if q.requested_agent in self.registry._agents:
+            definition=self.registry._agents[q.requested_agent]
+            answer=self.story_engine.llm.run_json(
+                definition.prompt+"\nReturn JSON only with keys answer, evidence, confidence.",
+                str({"source":source,"story":story.model_dump(),"question":q.question})
+            )
+            return {"question":q.question,"agent":q.requested_agent,**answer}
+        return {"question":q.question,"agent":"unassigned","answer":"UNRESOLVED","evidence":[]}
 
     def process_issue(self,issue):
         if not inside_work_window(): return "OUTSIDE_WORK_WINDOW"
@@ -30,21 +45,16 @@ class ProductWorkflow:
             self.worklog.activity(key,trace,"po","Produced initial Story draft",f"{len(result.questions)} refinement question(s) found.")
             for cycle in range(1,settings.max_refinement_cycles+1):
                 if self.story_engine.is_complete(result): break
-                answers=[]
-                blocking_external=False
+                answers=[]; blocked=False
                 for q in result.questions:
                     qid=self.repo.add_question(wf["id"],key,"refinement",q.question,q.requested_agent,q.blocking)
                     self.worklog.activity(key,trace,"refinement",f"Question {qid}",f"{q.question} | routed_to={q.requested_agent or 'unspecified'}")
-                    if q.requested_agent in KNOWLEDGE_AGENTS:
-                        blocking_external = blocking_external or q.blocking
-                        answers.append({"question":q.question,"agent":q.requested_agent,"answer":"KNOWLEDGE_UNAVAILABLE","evidence":[]})
-                    elif q.requested_agent in self.registry._agents:
-                        definition=self.registry._agents[q.requested_agent]
-                        answer=self.story_engine.llm.run_json(definition.prompt+"\nReturn JSON only with keys answer, evidence, confidence.",str({"source":source,"story":result.story.model_dump(),"question":q.question}))
-                        answers.append({"question":q.question,"agent":q.requested_agent,**answer})
-                if blocking_external:
+                    answer=self._answer_question(source,result.story,q)
+                    answers.append(answer)
+                    if q.blocking and answer.get("answer") in {"KNOWLEDGE_UNAVAILABLE","UNRESOLVED"}: blocked=True
+                if blocked:
                     self.repo.update_status(wf["id"],"WAITING_HUMAN")
-                    self.worklog.activity(key,trace,"orchestrator","Blocked unsafe inference","A blocking SAP/Agrotis/accounting question has no configured knowledge evidence. Human or knowledge-source input is required.")
+                    self.worklog.activity(key,trace,"orchestrator","Blocked unsafe inference","A blocking question could not be answered with available evidence. Human or knowledge-source input is required.")
                     return "WAITING_HUMAN"
                 result=self.story_engine.refine(result,answers)
                 self.worklog.activity(key,trace,"refinement",f"Completed refinement cycle {cycle}",f"Remaining questions: {len(result.questions)}")
@@ -65,9 +75,39 @@ class ProductWorkflow:
             ux=self.jira.create_ux_subtask(story_key,f"UX/UI prototype — {result.story.title}",ux_description)
             ux_key=ux["key"]; self.repo.set_ux(wf["id"],ux_key)
             self.worklog.activity(story_key,trace,"ux_ui","Created UX/UI subtask",ux_key)
-            self.worklog.activity(ux_key,trace,"ux_ui","Received approved Story","Prototype generation is the next workflow stage.")
-            self.repo.update_status(wf["id"],"UX_PENDING")
-            return "UX_PENDING"
+            self.worklog.activity(ux_key,trace,"ux_ui","Received approved Story","Starting prototype refinement.")
+
+            ux_answers=[]
+            ux_result=self.ux_engine.generate(result.story)
+            for cycle in range(1,settings.max_refinement_cycles+1):
+                if not ux_result.questions: break
+                blocked=False
+                for q in ux_result.questions:
+                    qid=self.repo.add_question(wf["id"],ux_key,"ux_ui",q.question,q.requested_agent,q.blocking)
+                    self.worklog.activity(ux_key,trace,"ux_ui",f"Question {qid}",f"{q.question} | routed_to={q.requested_agent or 'unspecified'}")
+                    answer=self._answer_question(source,result.story,q)
+                    ux_answers.append(answer)
+                    if q.blocking and answer.get("answer") in {"KNOWLEDGE_UNAVAILABLE","UNRESOLVED"}: blocked=True
+                if blocked:
+                    self.repo.update_status(wf["id"],"WAITING_HUMAN")
+                    self.worklog.activity(ux_key,trace,"ux_ui","Prototype blocked","A functional UX question lacks reliable evidence.")
+                    return "WAITING_HUMAN"
+                ux_result=self.ux_engine.generate(result.story,ux_answers)
+
+            if ux_result.questions:
+                self.repo.update_status(wf["id"],"WAITING_HUMAN")
+                self.worklog.activity(ux_key,trace,"ux_ui","Prototype quality gate failed","UX questions remain after maximum refinement cycles.")
+                return "WAITING_HUMAN"
+
+            paths=self.artifacts.write_prototype(trace,ux_key,ux_result.index_html,ux_result.components_js)
+            for path in paths:
+                checksum=self.artifacts.checksum(path)
+                self.repo.add_artifact(wf["id"],ux_key,"prototype",str(path),checksum)
+                self.jira.attach_file(ux_key,path)
+            self.worklog.activity(ux_key,trace,"ux_ui","Prototype completed","Attached index.html and components.js to this card.")
+            self.worklog.activity(story_key,trace,"orchestrator","UX/UI completed",f"Prototype available in {ux_key}.")
+            self.repo.update_status(wf["id"],"COMPLETED")
+            return "COMPLETED"
         except Exception as exc:
             self.repo.record_execution(wf["id"],"orchestrator","FAILED",key,error=str(exc))
             self.repo.update_status(wf["id"],"FAILED")
